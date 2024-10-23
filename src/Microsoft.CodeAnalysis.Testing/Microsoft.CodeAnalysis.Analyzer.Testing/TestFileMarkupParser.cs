@@ -438,31 +438,191 @@ namespace Microsoft.CodeAnalysis.Testing
             return CreateTestFile(code, positions, spans.ToImmutableDictionary(pair => pair.Key, pair => pair.Value.ToImmutableArray()));
         }
 
-        public static string CreateTestFile(string code, ImmutableArray<int> positions, ImmutableDictionary<string, ImmutableArray<TextSpan>> spans)
+        public static string CreateTestFile(
+     string code,
+     ImmutableArray<int> positions,
+     ImmutableDictionary<string, ImmutableArray<TextSpan>> spans)
         {
             var sb = new StringBuilder();
-            var anonymousSpans = spans.GetValueOrDefault(string.Empty, ImmutableArray<TextSpan>.Empty);
 
-            for (var i = 0; i <= code.Length; i++)
+            // Collect span infos
+            var spanInfos = new List<SpanInfo>();
+            foreach (var kvp in spans)
             {
-                if (positions.Contains(i))
+                var name = kvp.Key;
+                foreach (var span in kvp.Value)
+                {
+                    spanInfos.Add(new SpanInfo { Start = span.Start, End = span.End, Name = name });
+                }
+            }
+
+            // Collect events at each position
+            var eventsAtPosition = new SortedDictionary<int, List<SpanEvent>>();
+            foreach (var spanInfo in spanInfos)
+            {
+                // Start event
+                if (!eventsAtPosition.TryGetValue(spanInfo.Start, out var startEvents))
+                {
+                    startEvents = new List<SpanEvent>();
+                    eventsAtPosition[spanInfo.Start] = startEvents;
+                }
+                startEvents.Add(new SpanEvent { Position = spanInfo.Start, IsStart = true, Name = spanInfo.Name, Length = spanInfo.Length });
+
+                // End event
+                if (!eventsAtPosition.TryGetValue(spanInfo.End, out var endEvents))
+                {
+                    endEvents = new List<SpanEvent>();
+                    eventsAtPosition[spanInfo.End] = endEvents;
+                }
+                endEvents.Add(new SpanEvent { Position = spanInfo.End, IsStart = false, Name = spanInfo.Name, Length = spanInfo.Length });
+            }
+
+            // Process code positions
+            int codeLength = code.Length;
+            var openSpans = new Stack<string>();
+            for (int currentIndex = 0; currentIndex <= codeLength; currentIndex++)
+            {
+                // Append position markers
+                if (positions.Contains(currentIndex))
                 {
                     sb.Append(PositionString);
                 }
 
-                AddSpanString(sb, spans.Where(kvp => kvp.Key != string.Empty), i, start: true);
-                AddSpanString(sb, spans.Where(kvp => kvp.Key?.Length == 0), i, start: true);
-                AddSpanString(sb, spans.Where(kvp => kvp.Key?.Length == 0), i, start: false);
-                AddSpanString(sb, spans.Where(kvp => kvp.Key != string.Empty), i, start: false);
-
-                if (i < code.Length)
+                // Process events at current position
+                if (eventsAtPosition.TryGetValue(currentIndex, out var events))
                 {
-                    sb.Append(code[i]);
+                    // First process end events (close inner spans before outer spans)
+                    var endEvents = events.Where(e => !e.IsStart).OrderBy(e => e.Length).ToList();
+                    foreach (var spanEvent in endEvents)
+                    {
+                        if (openSpans.Count == 0)
+                        {
+                            throw new InvalidOperationException($"No open spans when closing span '{spanEvent.Name}' at position {currentIndex}");
+                        }
+
+                        var expectedSpanName = openSpans.Pop();
+                        if (spanEvent.Name != expectedSpanName)
+                        {
+                            throw new InvalidOperationException($"Mismatched span names at position {currentIndex}. Expected '{expectedSpanName}', got '{spanEvent.Name}'");
+                        }
+
+                        // Determine if we need to include the span name in the closing tag
+                        if (openSpans.Count > 0)
+                        {
+                            sb.Append("|");
+                            sb.Append(spanEvent.Name);
+                            sb.Append('}');
+                        }
+                        else
+                        {
+                            sb.Append(NamedSpanEndString); // "|}"
+                        }
+                    }
+
+                    // Then process start events (open outer spans before inner spans)
+                    var startEvents = events.Where(e => e.IsStart).OrderByDescending(e => e.Length).ToList();
+                    foreach (var spanEvent in startEvents)
+                    {
+                        if (string.IsNullOrEmpty(spanEvent.Name))
+                        {
+                            sb.Append(SpanStartString);
+                        }
+                        else
+                        {
+                            sb.Append(NamedSpanStartString);
+                            sb.Append(spanEvent.Name);
+                            sb.Append(':');
+                        }
+                        openSpans.Push(spanEvent.Name);
+                    }
+                }
+
+                // Append the character from code
+                if (currentIndex < code.Length)
+                {
+                    sb.Append(code[currentIndex]);
                 }
             }
 
             return sb.ToString();
         }
+
+        private class SpanInfo
+        {
+            public int Start { get; set; }
+            public int End { get; set; }
+            public string Name { get; set; }
+            public int Length => End - Start;
+        }
+
+        private class SpanEvent
+        {
+            public int Position { get; set; }
+            public bool IsStart { get; set; }
+            public string Name { get; set; }
+            public int Length { get; set; }
+        }
+
+
+        public static int IndexOf<T>(this IEnumerable<T> stack, T item)
+        {
+            int index = 0;
+            foreach (var element in stack)
+            {
+                if (EqualityComparer<T>.Default.Equals(element, item))
+                {
+                    return index;
+                }
+                index++;
+            }
+            return -1;
+        }
+
+
+        private static bool SpansOverlap(List<SpanEvent> events, SpanEvent currentEvent)
+        {
+            // Check if there are other spans that end at the same position
+            foreach (var e in events)
+            {
+                if (e.Position == currentEvent.Position && !e.IsStart && e.Name != currentEvent.Name)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private struct SpanEvent1 : IComparable<SpanEvent>
+        {
+            public int Position { get; }
+            public bool IsStart { get; }
+            public string Name { get; }
+
+            public SpanEvent1(int position, bool isStart, string name)
+            {
+                Position = position;
+                IsStart = isStart;
+                Name = name;
+            }
+
+            public int CompareTo(SpanEvent other)
+            {
+                // Sort by position
+                var positionComparison = Position.CompareTo(other.Position);
+                if (positionComparison != 0)
+                    return positionComparison;
+
+                // Start events before end events at the same position
+                if (IsStart != other.IsStart)
+                    return IsStart ? -1 : 1;
+
+                // For start events, outer spans before inner spans (longer spans first)
+                // For end events, inner spans before outer spans (shorter spans first)
+                return 0;
+            }
+        }
+
+
 
         private static void AddSpanString(
             StringBuilder sb,
@@ -496,8 +656,11 @@ namespace Microsoft.CodeAnalysis.Testing
                         else
                         {
                             sb.Append(NamedSpanEndString);
+                            sb.Append(name);
+                            sb.Append('}');
                         }
                     }
+
                 }
             }
         }

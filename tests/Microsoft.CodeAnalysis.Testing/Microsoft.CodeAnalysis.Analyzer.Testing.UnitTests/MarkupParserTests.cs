@@ -375,7 +375,7 @@ namespace Microsoft.CodeAnalysis.Testing
             // Test round-trip
             // https://github.com/dotnet/roslyn-sdk/issues/505
             var unexpectedMarkup = "{|x:first {|#0:seco|}nd|}";
-            Assert.Equal(unexpectedMarkup, TestFileMarkupParser.CreateTestFile(output, positions, spans));
+            Assert.Equal(markup, TestFileMarkupParser.CreateTestFile(output, positions, spans));
         }
 
         [Fact]
