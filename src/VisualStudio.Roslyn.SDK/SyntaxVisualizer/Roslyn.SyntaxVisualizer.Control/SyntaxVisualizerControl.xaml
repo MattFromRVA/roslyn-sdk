@@ -19,6 +19,7 @@
         <SolidColorBrush x:Key="SyntaxTriviaText.Brush" Color="{DynamicResource {x:Static vsui:EnvironmentColors.ToolWindowTextColorKey}}"/>
         <SolidColorBrush x:Key="OperationText.Brush" Color="{DynamicResource {x:Static vsui:EnvironmentColors.ToolWindowTextColorKey}}"/>
         <SolidColorBrush x:Key="ErrorSquiggle.Brush" Color="{DynamicResource {x:Static vsui:EnvironmentColors.ToolWindowTextColorKey}}"/>
+        <SolidColorBrush x:Key="WarningSquiggle.Brush" Color="{DynamicResource {x:Static vsui:EnvironmentColors.WarningTextBrushKey}}"/>
 
         <Style x:Key="SquiggleStyle" TargetType="{x:Type Shape}">
             <Setter Property="Fill">
@@ -30,6 +31,25 @@
                                 <GeometryDrawing.Pen>
                                     <!-- TODO: use thickness 1.2 when SystemParameters.HighContrast is true -->
                                     <Pen Brush="{StaticResource ErrorSquiggle.Brush}"
+                                         StartLineCap="Square" EndLineCap="Square" LineJoin="Round" MiterLimit="10"
+                                         Thickness="0.8" />
+                                </GeometryDrawing.Pen>
+                            </GeometryDrawing>
+                        </DrawingBrush.Drawing>
+                    </DrawingBrush>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="WarningSquiggleStyle" TargetType="{x:Type Shape}">
+            <Setter Property="Fill">
+                <Setter.Value>
+                    <!-- TODO: use Viewport.Top -0.4 when SystemParameters.HighContrast is true -->
+                    <DrawingBrush Stretch="None" TileMode="Tile" Viewport="0,-0.6,6,4.3" ViewportUnits="Absolute">
+                        <DrawingBrush.Drawing>
+                            <GeometryDrawing Geometry="M0,0 L1.5,-1.5 4.5,1.5 6,0">
+                                <GeometryDrawing.Pen>
+                                    <!-- TODO: use thickness 1.2 when SystemParameters.HighContrast is true -->
+                                    <Pen Brush="{StaticResource WarningSquiggle.Brush}"
                                          StartLineCap="Square" EndLineCap="Square" LineJoin="Round" MiterLimit="10"
                                          Thickness="0.8" />
                                 </GeometryDrawing.Pen>
@@ -127,8 +147,8 @@
                 </Style>
                 <Style TargetType="{x:Type TreeViewItem}">
                     <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="HorizontalContentAlignment" Value="{Binding HorizontalContentAlignment, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"/>
-                    <Setter Property="VerticalContentAlignment" Value="{Binding VerticalContentAlignment, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"/>
+                    <Setter Property="HorizontalContentAlignment" Value="{Binding HorizontalContentAlignment, RelativeSource={RelativeSource AncestorType={RelativeSource AncestorType={x:Type ItemsControl}}}}"/>
+                    <Setter Property="VerticalContentAlignment" Value="{Binding VerticalContentAlignment, RelativeSource={RelativeSource AncestorType={RelativeSource AncestorType={x:Type ItemsControl}}}}"/>
                     <Setter Property="Padding" Value="1,0,0,0"/>
                     <Setter Property="Foreground" Value="{DynamicResource {x:Static vsui:EnvironmentColors.ToolWindowTextBrushKey}}"/>
                     <Setter Property="FocusVisualStyle" Value="{StaticResource TreeViewItemFocusVisual}"/>
@@ -227,9 +247,9 @@
                     </Grid.ColumnDefinitions>
                     <Label Grid.Row="0" Grid.ColumnSpan="2" Content="Properties" FontWeight="Bold"/>
                     <Label Grid.Row="1" Grid.Column="0" Name="typeTextLabel" Visibility="Hidden" Content="Type" Padding="5,2,5,2" Margin="20,0,0,0"/>
-                    <Label Grid.Row="1" Grid.Column="1" Name="typeValueLabel" Padding="5,2,5,2"/>
+                    <Label Grid.Row="1" Grid.Column="1" Padding="5,2,5,2"/>
                     <Label Grid.Row="2" Grid.Column="0" Name="kindTextLabel" Visibility="Hidden" Content="Kind" Padding="5,2,5,2" Margin="20,0,0,0"/>
-                    <Label Grid.Row="2" Grid.Column="1" Name="kindValueLabel" Padding="5,2,5,2"/>
+                    <Label Grid.Row="2" Grid.Column="1" Padding="5,2,5,2"/>
                     <Label Grid.Row="3" Grid.Column="0" Name="colorLabel" Content="Classification" Padding="5,2,5,2" Margin="20, 0, 0, 0" Visibility="Hidden" />
                     <Grid Grid.Row="3" Grid.Column="1" Visibility="Hidden" x:Name="colorPickerGrid">
                         <Grid.ColumnDefinitions>

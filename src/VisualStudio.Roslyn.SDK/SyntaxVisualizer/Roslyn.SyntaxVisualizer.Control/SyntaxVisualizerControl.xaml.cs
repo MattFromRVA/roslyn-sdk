@@ -48,7 +48,9 @@ namespace Roslyn.SyntaxVisualizer.Control
         private static readonly string SyntaxTriviaTextBrushKey = "SyntaxTriviaText.Brush";
         private static readonly string OperationTextBrushKey = "OperationText.Brush";
         private static readonly string ErrorSquiggleBrushKey = "ErrorSquiggle.Brush";
+        private static readonly string WarningSquiggleBrushKey = "WarningSquiggle.Brush";
         private static readonly string SquiggleStyleKey = "SquiggleStyle";
+        private static readonly string WarningSquiggleStyleKey = "WarningSquiggleStyle";
 
         // Instances of this class are stored in the Tag field of each item in the treeview.
         private class SyntaxTag
@@ -297,6 +299,9 @@ namespace Roslyn.SyntaxVisualizer.Control
 
             var errorBrush = (SolidColorBrush)FindResource(ErrorSquiggleBrushKey);
             errorBrush.Color = GetForegroundColor(editorFormatMap.GetProperties(PredefinedErrorTypeNames.SyntaxError));
+
+            var warningBrush = (SolidColorBrush)FindResource(WarningSquiggleBrushKey);
+            warningBrush.Color = GetForegroundColor(editorFormatMap.GetProperties(PredefinedErrorTypeNames.Warning));
         }
 
         private static Color GetForegroundColor(ResourceDictionary resourceDictionary)
@@ -408,7 +413,7 @@ namespace Roslyn.SyntaxVisualizer.Control
         {
             TreeViewItem? match = null;
 
-            if (treeView.HasItems && !_isNavigatingFromTreeToSource)
+            if (treeView.HasItems && !_isNavigatingFromSourceToTree)
             {
                 _isNavigatingFromSourceToTree = true;
                 match = NavigateToBestMatch((TreeViewItem)treeView.Items[0], span, kind, category);
@@ -989,7 +994,15 @@ namespace Roslyn.SyntaxVisualizer.Control
                     Height = 3.0,
                 };
 
-                rectangle.SetResourceReference(StyleProperty, SquiggleStyleKey);
+                if (tag.Kind == "Warning")
+                {
+                    rectangle.SetResourceReference(StyleProperty, WarningSquiggleStyleKey);
+                }
+                else
+                {
+                    rectangle.SetResourceReference(StyleProperty, SquiggleStyleKey);
+                }
+
                 BindingOperations.SetBinding(rectangle, WidthProperty, new Binding { Source = textBlock, Path = new PropertyPath(ActualWidthProperty.Name) });
                 item.Header = new Grid { Children = { textBlock, rectangle } };
             }
